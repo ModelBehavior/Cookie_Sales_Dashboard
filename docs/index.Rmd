@@ -1,0 +1,134 @@
+---
+title: "Cookie Sales"
+output: 
+  flexdashboard::flex_dashboard:
+    source_code: embed
+    navbar:
+        - { icon: "fa-github", href: "https://github.com/ModelBehavior", align: right}
+        - { icon: "fa-linkedin", href: "https://www.linkedin.com/in/rashawn-howard/", align: right}
+    theme:
+      bootswatch: united
+  
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(crosstalk)
+library(htmlwidgets)
+library(highcharter)
+library(flexdashboard)
+
+knitr::opts_chunk$set(echo = FALSE)
+
+sales <- readxl::read_excel("/Users/rashawnhoward/Downloads/EXCEL/Cookie_Sales.xlsx", sheet = "Data")
+
+sales <- sales %>% janitor::clean_names()
+head(sales)
+
+sales_product_lvl <- levels(sales$product)
+
+shared_sales_data <- SharedData$new(sales)
+```
+
+Dashboard {data-icon="fa-home"}
+===================================== 
+
+## Row 1
+
+### Total Profit
+```{r}
+sales %>% 
+  summarise(profit = round(sum(profit))) %>% 
+  valueBox(caption = "Total Profit", icon = "fa-thumbs-up", 
+           color = "lightgreen")
+```
+
+### Total Units Sold
+```{r}
+sales %>% 
+  summarise(units_sold = sum(units_sold)) %>% 
+  valueBox(caption = "Total Units Sold", 
+           icon = "fa-truck",
+           color = "lightblue")
+```
+
+### Average Units Sold by Country
+```{r}
+sales %>% 
+   group_by(country) %>% 
+   summarise(units_sold = round(mean(units_sold))) %>% 
+   hchart("pie", hcaes(x = country, y = units_sold),
+          name = "Average Units Sold") %>% 
+  hc_exporting(
+    enabled = TRUE, filename="pie_graph2")
+```
+
+### Average Profit by Country
+```{r}
+ sales %>% 
+   group_by(country) %>% 
+   summarise(profit = round(mean(profit))) %>% 
+   hchart("pie", hcaes(x = country, y = profit),
+         name = "Average Profit") %>% 
+  hc_exporting(
+    enabled = TRUE, filename="pie_graph1")
+```
+
+## Column 1
+
+### Profit by Month
+
+```{r}
+sales %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(profit = sum(profit)) %>% 
+  hchart(type = "line", hcaes(x  = month, y = profit),
+         name =  "Profit") %>% 
+  hc_exporting(
+    enabled = TRUE, filename="line_graph1")
+```
+
+### Units Sold by Month
+
+```{r}
+sales %>% 
+  mutate(month = lubridate::month(date)) %>% 
+  group_by(month) %>% 
+  summarise(units_sold = sum(units_sold)) %>% 
+  hchart(type  = "line", hcaes(x = month, y = units_sold),
+         name = "Units Sold") %>% 
+  hc_exporting(
+    enabled = TRUE, filename="line_graph2")
+```
+
+## Column 2
+
+### Profit by Market and Cookie Type
+
+```{r}
+sales %>% 
+  group_by(country,product) %>% 
+  summarise(profit = sum(profit)) %>% 
+  highcharter::hchart(type = "bar", hcaes(x = country, y = profit, 
+                                          group = product)) %>% 
+  hc_exporting(
+    enabled = TRUE, filename="bar_graph")
+```
+
+Data {data-icon="fa-table"}
+===================================== 
+```{r}
+sales %>% 
+  mutate(date = lubridate::ymd(date)) %>% 
+  DT::datatable( extensions = 'Buttons',  filter = 'top', options = list(searchHighlight = TRUE, pageLength = 15, dom = 'Bfrtip',
+                                                                                                 buttons = 
+                                                 list( list(
+                                                   extend = 'collection',
+                                                  buttons = list(list(extend='csv',filename='cookie_sales.csv'),
+                                                                 list(extend='excel',
+                                                                      filename = 'cookie_sales.xlsx') ),text="Download"
+                                                               
+                                                                                                 
+))))
+
